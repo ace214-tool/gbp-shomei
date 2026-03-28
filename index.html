@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GBP 投稿用署名メーカー</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: linear-gradient(160deg, #f0f4f8 0%, #e2e8f0 100%);
+    font-family: 'Helvetica Neue', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+    padding: 24px 16px;
+    color: #334155;
+  }
+  .container { max-width: 840px; margin: 0 auto; }
+
+  /* Header */
+  .header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 28px; padding-bottom: 16px;
+    border-bottom: 3px solid #3b82f6;
+  }
+  .header-logo {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: #fff; font-weight: 800; font-size: 18px;
+    padding: 10px 14px; border-radius: 10px; letter-spacing: 1px;
+  }
+  .header-title { font-weight: 700; font-size: 18px; color: #1e293b; }
+  .header-sub { font-size: 13px; color: #64748b; margin-top: 2px; }
+
+  /* Grid */
+  .grid {
+    display: grid; gap: 20px; align-items: start;
+    grid-template-columns: 1fr;
+  }
+  .grid.has-output { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 700px) {
+    .grid.has-output { grid-template-columns: 1fr; }
+  }
+
+  /* Card */
+  .card {
+    background: #fff; border-radius: 14px; padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
+  }
+
+  /* Section label */
+  .label { font-size: 14px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .label-blue { color: #3b82f6; }
+  .label-amber { color: #f59e0b; }
+  .label-green { color: #10b981; }
+  .label-sub { font-size: 11px; color: #94a3b8; font-weight: 400; }
+
+  /* Textarea */
+  textarea {
+    width: 100%; min-height: 200px;
+    border: 1.5px solid #e2e8f0; border-radius: 10px;
+    padding: 14px 16px; font-size: 14px; line-height: 1.7;
+    resize: vertical; outline: none; transition: border-color 0.2s;
+    font-family: inherit; color: #334155;
+  }
+  textarea:focus { border-color: #3b82f6; }
+
+  /* Buttons */
+  .btn {
+    width: 100%; border: none; border-radius: 10px;
+    font-size: 15px; font-weight: 700; letter-spacing: 1px;
+    cursor: pointer; transition: all 0.2s; padding: 13px 0;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff; margin-top: 12px;
+  }
+  .btn-primary:disabled {
+    background: #cbd5e1; cursor: default;
+  }
+  .btn-clear {
+    margin-top: 8px; padding: 10px 0;
+    background: transparent; color: #94a3b8;
+    border: 1.5px solid #e2e8f0; font-size: 14px;
+    cursor: pointer; border-radius: 10px; width: 100%;
+  }
+  .btn-copy {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff;
+  }
+  .btn-copy.copied {
+    background: linear-gradient(135deg, #10b981, #059669);
+  }
+  .btn-copy:disabled { background: #cbd5e1; cursor: default; }
+
+  /* Field row */
+  .field-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .field-label {
+    font-size: 12px; font-weight: 600; color: #64748b;
+    min-width: 52px; text-align: right;
+  }
+  .field-input {
+    flex: 1; border: 1.5px solid #e2e8f0; border-radius: 8px;
+    padding: 8px 12px; font-size: 14px; outline: none;
+    font-family: inherit; color: #1e293b;
+  }
+  .field-input:focus { border-color: #3b82f6; }
+
+  /* Format info */
+  .format-info {
+    font-size: 12px; color: #94a3b8; margin-bottom: 8px;
+    padding: 12px; background: #f8fafc;
+    border-radius: 8px; border: 1px solid #f1f5f9;
+    line-height: 1.5;
+  }
+
+  /* Preview */
+  .preview {
+    background: #f8fafc; border: 1.5px solid #e2e8f0;
+    border-radius: 10px; padding: 16px 18px;
+    white-space: pre-wrap;
+    font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, monospace;
+    font-size: 14px; line-height: 1.8; color: #1e293b;
+    margin-bottom: 14px; min-height: 60px;
+  }
+  .preview-empty { color: #94a3b8; }
+
+  .fields-section { margin-bottom: 20px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="header-logo">GBP</div>
+    <div>
+      <div class="header-title">投稿用署名メーカー</div>
+      <div class="header-sub">GBP テキストを貼り付け → 整理 → 署名をコピー</div>
+    </div>
+  </div>
+
+  <div class="grid" id="grid">
+    <div class="card">
+      <div class="label label-blue">📋 GBPテキスト貼り付け</div>
+      <textarea id="rawText" placeholder="GBPの画面をそのままコピペしてください。&#10;ノイズ（評価・ボタン・営業時間など）は&#10;自動で除去されます。&#10;&#10;例:&#10;買いクル 福岡天神店&#10;5.0(3)&#10;ウェブサイト&#10;ルート&#10;所在地： 〒810-0001 福岡県福岡市中央区天神１丁目９−１７ 福岡天神フコク生命ビル 15階"></textarea>
+      <button class="btn btn-primary" id="parseBtn" onclick="handleParse()" disabled>🔍 整理する　(Ctrl+Enter)</button>
+      <button class="btn-clear" onclick="handleClear()">クリア</button>
+    </div>
+
+    <div class="card" id="outputCard" style="display:none;">
+      <div class="label label-amber">
+        ⚡ 抽出結果
+        <span class="label-sub">（直接編集可）</span>
+      </div>
+      <div class="fields-section">
+        <div class="field-row">
+          <span class="field-label">店名</span>
+          <input class="field-input" id="f_name" oninput="renderPreview()">
+        </div>
+        <div class="field-row">
+          <span class="field-label">〒</span>
+          <input class="field-input" id="f_postal" oninput="renderPreview()">
+        </div>
+        <div class="field-row">
+          <span class="field-label">住所</span>
+          <input class="field-input" id="f_address" oninput="renderPreview()">
+        </div>
+        <div class="field-row">
+          <span class="field-label">建物名</span>
+          <input class="field-input" id="f_building" placeholder="（なければ空欄でOK）" oninput="renderPreview()">
+        </div>
+      </div>
+      <div class="format-info">
+        出力形式：<br>
+        ◇店名<br>
+        〒郵便番号<br>
+        住所<br>
+        建物名
+      </div>
+      <div class="label label-green">✅ 署名プレビュー</div>
+      <div class="preview" id="preview"><span class="preview-empty">項目を入力してください</span></div>
+      <button class="btn btn-copy" id="copyBtn" onclick="handleCopy()">📋 署名をコピー</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Noise detection ──
+const EXACT_SKIP = new Set([
+  "ウェブサイト","ルート","保存","共有","電話","概要","クチコミ",
+  "写真","最新情報","メニュー","サービス","情報",
+  "オンラインで予約","席を予約","順番待ちに参加",
+  "外観を見る","写真を表示",
+]);
+
+const PARTIAL_SKIP = [
+  /^\d+\.\d+\s*[\(（]\d+[\)）]/,
+  /^\d+\s*枚/,
+  /^営業/, /^電話番号/, /^プラス\s?コード/,
+  /^情報の修正/, /^このビジネス/, /^写真を/,
+  /の地図$/, /のクチコミ/, /^レビュー/,
+  /^質問と回答/, /^よくある質問/, /^混雑/, /^周辺/, /^関連/,
+  /^\d{1,2}:\d{2}/,
+  /^(月|火|水|木|金|土|日|祝)\s*(曜日)?/,
+  /^定休/, /^(開店|閉店)/,
+  /^(予約|テイクアウト|デリバリー|イートイン)/,
+  /^(バリアフリー|駐車場|Wi-Fi|カード|キャッシュレス|QR)/,
+  /^ストリートビュー/, /^最新の投稿/,
+];
+
+function isNoise(l) {
+  l = l.trim();
+  if (!l) return true;
+  if (EXACT_SKIP.has(l)) return true;
+  if (PARTIAL_SKIP.some(r => r.test(l))) return true;
+  if (l.length <= 2 && !/[〒]/.test(l)) return true;
+  return false;
+}
+
+// ── Parser ──
+function parseGBP(raw) {
+  const lines = raw.trim().split(/\n/).map(l => l.trim());
+  let name = "", postal = "", address = "", building = "";
+
+  function extractAddress(str) {
+    const pm = str.match(/(〒?\s*\d{3}-?\d{4})\s*(.*)/);
+    if (pm) { postal = pm[1].replace(/^〒?\s*/, "〒"); str = pm[2].trim(); }
+    if (!str) return;
+    const D = "[\\d０-９]", SEP = "[−\\-ー]";
+    const re = new RegExp(
+      "^((?:北海道|東京都|大阪府|京都府|.{2,3}県)?.+?(?:" + D + "+" + SEP + "?" + D + "*" + SEP + "?" + D + "*|丁目" + D + "*" + SEP + "?" + D + "*" + SEP + "?" + D + "*))\\s+(.+)$"
+    );
+    const m = str.match(re);
+    if (m) { address = m[1].trim(); building = m[2].trim(); }
+    else { address = str; }
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue;
+
+    // 所在施設は無視（建物名は所在地の住所末尾から取る）
+    if (/^所在施設[：:]/.test(line)) continue;
+
+    const locM = line.match(/^所在地[：:]\s*(.*)/);
+    if (locM) { extractAddress(locM[1].trim()); continue; }
+
+    const posM = line.match(/^(〒?\s*\d{3}-?\d{4})\s*(.*)/);
+    if (posM && !postal) {
+      postal = posM[1].replace(/^〒?\s*/, "〒");
+      if (posM[2]) extractAddress(posM[2]);
+      continue;
+    }
+
+    if (isNoise(line)) continue;
+    if (/^.{2,5}(区|市|町|村)の/.test(line)) continue;
+
+    if (!name) { name = line; continue; }
+    if (name && (postal || address) && !building) { building = line; }
+  }
+
+  return { name, postal, address, building };
+}
+
+// ── Signature render ──
+function buildSignature() {
+  const n = document.getElementById("f_name").value;
+  const p = document.getElementById("f_postal").value;
+  const a = document.getElementById("f_address").value;
+  const b = document.getElementById("f_building").value;
+  const lines = [];
+  
+  // それぞれ値があれば、配列に1行ずつ追加していく（これで改行されます）
+  if (n) lines.push("◇" + n);
+  if (p) lines.push(p);
+  if (a) lines.push(a);
+  if (b) lines.push(b);
+  
+  return lines.join("\n");
+}
+
+function renderPreview() {
+  const sig = buildSignature();
+  const el = document.getElementById("preview");
+  if (sig) { el.textContent = sig; el.classList.remove("preview-empty"); }
+  else { el.innerHTML = '<span class="preview-empty">項目を入力してください</span>'; }
+}
+
+// ── Handlers ──
+function handleParse() {
+  const raw = document.getElementById("rawText").value;
+  if (!raw.trim()) return;
+  const { name, postal, address, building } = parseGBP(raw);
+  document.getElementById("f_name").value = name;
+  document.getElementById("f_postal").value = postal;
+  document.getElementById("f_address").value = address;
+  document.getElementById("f_building").value = building;
+  document.getElementById("outputCard").style.display = "";
+  document.getElementById("grid").classList.add("has-output");
+  renderPreview();
+}
+
+function handleClear() {
+  document.getElementById("rawText").value = "";
+  document.getElementById("outputCard").style.display = "none";
+  document.getElementById("grid").classList.remove("has-output");
+  document.getElementById("parseBtn").disabled = true;
+}
+
+let copyTimer;
+function handleCopy() {
+  const sig = buildSignature();
+  if (!sig) return;
+  const btn = document.getElementById("copyBtn");
+  navigator.clipboard.writeText(sig).catch(() => {
+    const ta = document.createElement("textarea");
+    ta.value = sig; document.body.appendChild(ta);
+    ta.select(); document.execCommand("copy");
+    document.body.removeChild(ta);
+  });
+  btn.textContent = "✅ コピーしました！";
+  btn.classList.add("copied");
+  clearTimeout(copyTimer);
+  copyTimer = setTimeout(() => {
+    btn.textContent = "📋 署名をコピー";
+    btn.classList.remove("copied");
+  }, 2000);
+}
+
+// ── Init ──
+const ta = document.getElementById("rawText");
+ta.addEventListener("input", () => {
+  document.getElementById("parseBtn").disabled = !ta.value.trim();
+});
+ta.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); handleParse(); }
+});
+</script>
+</body>
+</html>
