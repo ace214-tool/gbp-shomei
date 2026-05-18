@@ -15,7 +15,6 @@
   }
   .container { max-width: 840px; margin: 0 auto; }
 
-  /* Header */
   .header {
     display: flex; align-items: center; gap: 14px;
     margin-bottom: 28px; padding-bottom: 16px;
@@ -29,7 +28,6 @@
   .header-title { font-weight: 700; font-size: 18px; color: #1e293b; }
   .header-sub { font-size: 13px; color: #64748b; margin-top: 2px; }
 
-  /* Grid */
   .grid {
     display: grid; gap: 20px; align-items: start;
     grid-template-columns: 1fr;
@@ -39,20 +37,17 @@
     .grid.has-output { grid-template-columns: 1fr; }
   }
 
-  /* Card */
   .card {
     background: #fff; border-radius: 14px; padding: 24px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
   }
 
-  /* Section label */
   .label { font-size: 14px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
   .label-blue { color: #3b82f6; }
   .label-amber { color: #f59e0b; }
   .label-green { color: #10b981; }
   .label-sub { font-size: 11px; color: #94a3b8; font-weight: 400; }
 
-  /* Textarea */
   textarea {
     width: 100%; min-height: 200px;
     border: 1.5px solid #e2e8f0; border-radius: 10px;
@@ -62,7 +57,6 @@
   }
   textarea:focus { border-color: #3b82f6; }
 
-  /* Buttons */
   .btn {
     width: 100%; border: none; border-radius: 10px;
     font-size: 15px; font-weight: 700; letter-spacing: 1px;
@@ -90,7 +84,6 @@
   }
   .btn-copy:disabled { background: #cbd5e1; cursor: default; }
 
-  /* Field row */
   .field-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
   .field-label {
     font-size: 12px; font-weight: 600; color: #64748b;
@@ -103,7 +96,6 @@
   }
   .field-input:focus { border-color: #3b82f6; }
 
-  /* Format info */
   .format-info {
     font-size: 12px; color: #94a3b8; margin-bottom: 8px;
     padding: 12px; background: #f8fafc;
@@ -111,7 +103,6 @@
     line-height: 1.5;
   }
 
-  /* Preview */
   .preview {
     background: #f8fafc; border: 1.5px solid #e2e8f0;
     border-radius: 10px; padding: 16px 18px;
@@ -188,6 +179,9 @@ const EXACT_SKIP = new Set([
   "写真","最新情報","メニュー","サービス","情報",
   "オンラインで予約","席を予約","順番待ちに参加",
   "外観を見る","写真を表示",
+  "経路","ナビ","通話","モバイルで開く","送信",
+  "オンラインで注文","オンライン注文",
+  "プロバイダ","プロバイダー",
 ]);
 
 const PARTIAL_SKIP = [
@@ -203,6 +197,16 @@ const PARTIAL_SKIP = [
   /^(予約|テイクアウト|デリバリー|イートイン)/,
   /^(バリアフリー|駐車場|Wi-Fi|カード|キャッシュレス|QR)/,
   /^ストリートビュー/, /^最新の投稿/,
+  /^電話[：:]/, /^TEL[：:]/i, /^Tel[：:]/, /^Phone[：:]/i,
+  /^Google\s*に寄せられた/, /^Google\s*のクチコミ/,
+  /寄せられたクチコミを見る$/,
+  /^\d+(\.\d+)?Google/,
+  /^0\d{1,3}[-‐−]?\d{2,4}[-‐−]?\d{3,4}$/,
+  /^あなたは.*管理者/,
+  /^サービス\s*オプション/,
+  /^メニュー[：:]/,
+  /^￥/,
+  /^\d+\s*人/,
 ];
 
 function isNoise(l) {
@@ -214,8 +218,21 @@ function isNoise(l) {
   return false;
 }
 
+// 階数のみ判定（1F, 15階, B1, 地下1階 等）→ trueなら住所に統合する
+function isFloorOnly(b) {
+  return /^(?:\d+\s*[FfＦｆ][Ll]?|\d+\s*階|[Bb][０-９\d]+|地下\d+\s*階?)$/.test(b.trim());
+}
+
+// 前処理：マークダウンリンク [text](url) → text 等
+function normalize(raw) {
+  return raw
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/[ \t]+/g, ' ');
+}
+
 // ── Parser ──
-function parseGBP(raw) {
+function parseGBP(rawInput) {
+  const raw = normalize(rawInput);
   const lines = raw.trim().split(/\n/).map(l => l.trim());
   let name = "", postal = "", address = "", building = "";
 
@@ -228,19 +245,25 @@ function parseGBP(raw) {
       "^((?:北海道|東京都|大阪府|京都府|.{2,3}県)?.+?(?:" + D + "+" + SEP + "?" + D + "*" + SEP + "?" + D + "*|丁目" + D + "*" + SEP + "?" + D + "*" + SEP + "?" + D + "*))\\s+(.+)$"
     );
     const m = str.match(re);
-    if (m) { address = m[1].trim(); building = m[2].trim(); }
-    else { address = str; }
+    if (m) {
+      address = m[1].trim();
+      building = m[2].trim();
+      // 階数のみなら住所に統合、buildingは空
+      if (isFloorOnly(building)) {
+        address = address + " " + building;
+        building = "";
+      }
+    } else { address = str; }
   }
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (!line) continue;
 
-    // 所在施設は無視（建物名は所在地の住所末尾から取る）
     if (/^所在施設[：:]/.test(line)) continue;
 
-    const locM = line.match(/^所在地[：:]\s*(.*)/);
-    if (locM) { extractAddress(locM[1].trim()); continue; }
+    const addrLabelM = line.match(/^(?:所在地|住所|アドレス|Address)[：:]\s*(.*)/i);
+    if (addrLabelM) { extractAddress(addrLabelM[1].trim()); continue; }
 
     const posM = line.match(/^(〒?\s*\d{3}-?\d{4})\s*(.*)/);
     if (posM && !postal) {
@@ -266,13 +289,10 @@ function buildSignature() {
   const a = document.getElementById("f_address").value;
   const b = document.getElementById("f_building").value;
   const lines = [];
-  
-  // それぞれ値があれば、配列に1行ずつ追加していく（これで改行されます）
   if (n) lines.push("◇" + n);
   if (p) lines.push(p);
   if (a) lines.push(a);
   if (b) lines.push(b);
-  
   return lines.join("\n");
 }
 
